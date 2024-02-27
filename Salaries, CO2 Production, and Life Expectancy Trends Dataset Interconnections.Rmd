@@ -1,0 +1,325 @@
+---
+title: "Salaries, CO2 Production, and Life Expectancy Trends: Dataset Interconnections"
+author: "Simone Ferretti"
+date: "2023-10-09"
+output: html_document
+--- 
+Introduction: This project involves the exploration of diverse data sets representing numerous countries worldwide. The analysis will encompass both individual data set examination and comparative assessment, employing graphical representations. The aims are to understand the trends in life expectancy and co2 production around the world and to display correlations between data frames.
+The data sets that will be analyzed are about salary data, co2 production, life expectancy.
+
+## Data Analysis and Dataset Optimization
+
+```{r}
+
+# loading packages that will be useful during the project: the package "tidyverse" will be used in managing tibbles and creating plots, while dplyr will be needed for the "across" function, used to apply a function to multiple columns
+
+library(tidyverse)
+library(dplyr)
+
+# reading the data frames, while removing the "empty values" in the life expectancy and co2 production data frames, making the program consider empty spaces as NA
+salary_data = read.csv("C:/Users/simon/Downloads/project/salary_data.csv")
+life_expectancy_by_birth = read.csv("C:/Users/simon/Downloads/project/life_expectancy_by_birth.csv", na.strings = c("", NA))
+co2_production = read.csv("C:/Users/simon/Downloads/project/co2_production.csv", na.strings = c("", NA))
+
+# checking the class of the data frames
+
+class(salary_data) # salary_data is a tibble so I can use the tidyverse and dplyr functions on it
+
+str(salary_data) # checking the content of the data frame: there are 7 columns of which 3 contain strings and 4 contain numbers. The countries observable in the data frame 221, since are considered also some autonomous regions, such as the Aland Islands and the Aruba Island.
+
+salary_data = salary_data  %>% mutate(across(where(is.numeric), signif, 4)) # rounding all the values in the data set to 4 significant numbers 
+
+class(co2_production) # co2_production is a tibble so I can use the tidyverse and dplyr functions on it
+
+str(co2_production) # Checking the content of the data frame: there are 37 columns of which 4 contain strings, one contains integers, and the rest contain numeric values. The countries observable in the data frame are 206, since also macro-regions and other factors (such as human development) are observed.
+
+co2_production = co2_production %>% mutate(across(where(is.numeric), signif, 4)) # rounding all the values in the data set to 4 significant numbers 
+
+co2_production = co2_production[ ,-1] # removing not useful rows and columns
+
+class(life_expectancy_by_birth) # checking if the data frame is a tibble
+
+str(life_expectancy_by_birth) # Checking the content of the data frame: there are 37 columns of which 4 contain strings, one contains integers, and the rest contain numeric values. The countries observable in the data frame are 206, since also macro-regions and other factors (such as human development) are observed in the column "Country".
+
+life_expectancy_by_birth = as_tibble(life_expectancy_by_birth) # transforming it into a tibble so I can use the tidyverse and dplyr functions on it
+
+life_expectancy_by_birth %>% mutate(across(where(is.numeric), signif, 4)) # rounding all the values in the data set to 4 significant numbers 
+
+# removing not useful columns and rows
+life_expectancy_by_birth = life_expectancy_by_birth[ ,-1]
+
+
+
+```
+
+## Extraction of Relevant Data and Creation/Selection of New Tibbles
+
+### In the following chunk, the data sets will be summarized and analyzed to identify the most suitable information for plotting.
+
+```{r}
+
+# Adjusting the names of all the nations in North America
+salary_data[23,2] = "North America"
+salary_data[36,2] = "North America"
+salary_data[79,2] = "North America"
+salary_data[210,2] = "North America"
+
+
+# Visualizing max and min values while grouping by continents (there is no need to remove NAs, since there aren't in this data frame)
+salary_data_sum = salary_data %>%
+group_by(continent_name) %>%
+summarize(
+min_lowest_salary = min(lowest_salary),
+max_lowest_salary = max(lowest_salary),
+min_highest_salary = min(highest_salary),
+max_highest_salary = max(highest_salary),
+min_median_salary = min(median_salary),
+max_median_salary = max(median_salary),
+min_average_salary = min(average_salary),
+max_average_salary = max(average_salary)
+
+)
+
+# By observing the different values in the salary_data_sum we find out that Oceania, North America and Europe are the richest continents, Europe has a higher salary ceiling than North America, whereas North America boasts a higher salary floor than Europe. Asia offers pretty low minimum salaries, but has higher max salaries than the less developed continents. Africa is the poorest country, followed by South America
+
+
+# in the next section the variation in life expectancy and co2 production from 1990 to 2021 will be computed and visualized in a new tibble
+
+
+co2_production = co2_production %>% arrange(hdicode) # changing the order of the tibble for subsetting
+
+hdi_rows = c(196,197,198,199)
+
+co2_hdi = co2_production[hdi_rows, ] # subsetting the human development rows
+
+co2_hdi = co2_hdi %>% rename(human_development = Country) # renaming a column
+
+co2_hdi2021 = co2_hdi %>% pull(co2_prod_2021) # extracting information in the list form to make computations
+
+co2_hdi1990 = co2_hdi %>% pull(co2_prod_1990) # extracting information in the list form to make computations
+
+co2_var = as.double(co2_hdi2021) - as.double(co2_hdi1990) # computing the difference between the values in 2021 and 1990
+
+matrownames = c("Very High Human Development", "High Human Development", "Medium Human Development", "Low Human Development")
+
+co2_data = c(matrownames, co2_hdi2021, co2_hdi1990, co2_var) # creating a new variable containing the data for the matrix
+
+matr_co2 = matrix(co2_data, nrow = 4, ncol = 4) # creating the matrix, so that the computations can be visualized
+
+co2_diff = as_tibble(matr_co2) # transforming the matrix into a tibble and renaming columns
+
+co2_diff = co2_diff %>% rename("Human development" = V1)
+co2_diff = co2_diff %>% rename(co2_production2021 = V2)
+co2_diff = co2_diff %>% rename(co2_production1990 = V3)
+co2_diff = co2_diff %>% rename(co2_production_variation = V4)
+
+
+
+life_expectancy_by_birth = life_expectancy_by_birth %>% arrange(hdicode) # changing the order of the tibble for subsetting
+
+le_hdi = life_expectancy_by_birth[hdi_rows, ] # subsetting needed information
+
+le_hdi = le_hdi %>% rename(human_development = Country) # renaming a column
+
+le_hdi = le_hdi %>% arrange(desc(le_1990)) # changing the order so that i can use the variable "matrownames" again
+
+le_hdi2021 = le_hdi %>% pull(le_2021) #extracting lists for computations
+
+le_hdi1990 = le_hdi %>% pull(le_1990) #extracting lists for computations
+
+le_var = signif(as.double(le_hdi2021) - as.double(le_hdi1990), digits = 4) # finding the difference
+
+le_data = c(matrownames, le_hdi2021, le_hdi1990, le_var) # creating a variable containing the data for the matrix
+
+matr_le = matrix(le_data, nrow = 4, ncol = 4) # creating the matrix
+
+le_diff = as_tibble(matr_le) # transforming the matrix into tibble and renaming column 
+
+le_diff = le_diff %>% rename("Human development" = V1)
+le_diff = le_diff %>% rename(le_2021 = V2)
+le_diff = le_diff %>% rename(le_1990 = V3)
+le_diff = le_diff %>% rename(le_variation = V4)
+
+le_co2_diff = cbind(as.matrix(co2_diff), as.matrix(le_diff)) #merging the two matrices
+
+le_co2_diff = as_tibble(le_co2_diff) %>% select( ,-5) # transforming the matrix back into tibble and removing the repeated column
+
+# Having built this final tibble, we can visualize how co2 production and life expectancy actually have changed between 1990 and 2021, based and 4 groups of countries chosen by the human development index. From this tibble, we can easily observe that in countries with a very high human development index the co2 production has dropped by
+
+```
+
+## Plots
+
+### The plots displayed in the following section will be aimed both at visualizing each data set and the links between them.
+
+
+```{r}
+
+hdi_order= c("Low", "Medium", "High", "Very High") # creating a variable that contains the ordered names to be used in the axis column with the function "scale_x_discrete" which purpose is exactly to reorder the x axis names.
+
+# now we'll create two plots displaying the CO2 production in 2019 and 2020 by human development index, using the function "ggplot" from the package "tidyverse". In particular, we'll use "na.exclude" when choosing the data frame, so that the rows with "NA" value in the hdicode column will be excluded.
+
+library(patchwork)  # installing and loading the package "patchwork", a package needed to display more than one plot in a single output (the installing code is not present since after I've installed, it would gave me an error if I tried to knit to HTML)
+
+# Now the CO2 production data in 2019 and 2020 will be plotted and compared, in order to understand if the global pandemic had any effect on pollution. (This is purely hypothetical, we can't be 100% sure that the two events are actually linked). 
+
+co2_2019_plot = ggplot(
+  data = co2_production,
+  mapping = aes(
+    x = hdicode,
+    y = co2_prod_2019
+  )
+) +
+  geom_point() +
+  scale_x_discrete(limits = hdi_order) +  # this function lets me change the order of the variables on the x axis
+  labs(
+  title = "CO2 production in 2019",
+  subtitle = "Based on HDI",
+  x = "Human Development Index Code",
+  y = "CO2 production"
+)
+
+
+
+co2_2020_plot = ggplot(
+  data = co2_production,
+  mapping = aes(
+    x = hdicode,
+    y = co2_prod_2020
+  )
+) +
+  geom_point() +
+  scale_x_discrete(limits = hdi_order) +
+  labs(
+  title = "CO2 production in 2020",
+  subtitle = "Based on HDI",
+  x = "Human Development Index Code",
+  y = "CO2 production"
+)
+
+co2_2019_plot + co2_2020_plot
+
+
+#If we compare the two plots, we are able to notice that the countries with very high development index have slightly dropped their CO2 production, we can interpret this variation as one of the effects of the global pandemic that spread in March 2020 in those countries.
+
+co2_production = co2_production %>% arrange(Country) # rearranging so that it is sure the values of each nation will be on the exact row of the other data frame
+
+life_expectancy_by_birth = life_expectancy_by_birth %>% arrange(Country)
+
+le_clean = life_expectancy_by_birth[, -1:-4] # excluding columns that are already present in both data frames, so that they are not repeated in the merged tibble
+
+le_co2_plot = bind_cols(co2_production, le_clean) # merging the tibbles by columns
+
+# Now we'll check for any link between life expectancy and co2 production by displaying their values in 2021 and in 1990 in two scatter plots, that will be then summed and visualized in a single output
+
+comb_plot1 = ggplot(
+  data = le_co2_plot,
+  mapping = aes(
+    x = co2_prod_1990,
+    y = le_1990
+  )
+) +
+  geom_point(
+    mapping = aes(color = hdicode)
+  ) +
+  geom_smooth( 
+    fullrange = TRUE
+    ) +  # the function "geom_smooth" adds a trend line over an existing ggplot2 visualization
+  labs(
+  title = "1990",
+  x = "CO2 Production",
+  y = "Life Expectancy",
+  color = "HDI code"
+)
+
+comb_plot2 = ggplot(
+  data = le_co2_plot,
+  mapping = aes(
+    x = co2_prod_2021,
+    y = le_2021
+  )
+) +
+  geom_point(
+    mapping = aes(color = hdicode)
+  ) +
+  geom_smooth( 
+    fullrange = TRUE
+    ) +
+  labs(
+  title = "2021",
+  x = "CO2 Production",
+  y = "Life Expectancy",
+  color = "HDI code"
+)
+
+comb_plot1 + comb_plot2 + plot_annotation(
+  title = "CO2 production and life expectancy",
+  subtitle = "Based on HDI",
+)
+
+# although pollution has been consistent over time, it seems that this did not affect life expectancy, by contrast life expectancy grow in almost every country probably due to an economical-social growth and technological development. CO2 production also grew from 1990 to 2021, as we can see in the data frame "le_co2_diff"
+
+# In this section we'll reduce the three data sets to the same countries, so that we can merge them and attribute an HDI code also to countries in the salary data data frame 
+
+salary_data = salary_data %>% arrange(country_name) # rearranging to find Russia
+
+salary_data[167, 1] = "Russian Federation" # some of the countries will be lost in this process, since they are not named in the same way in both data frames. I decided to change the name of Russia in salary_data so that it will be part of the final data frames, as it is the biggest country in the world and surely one of the most relevant.
+
+co2_production = co2_production %>% arrange(hdicode) # rearranging so that we can remove all the rows with NAs in the column "hdicode", since they are not a country or they're not relevant in this analysis
+
+country_co2 = as.list(co2_production[ ,1]) # transforming the column "country" into a list, so that we can use it for selecting the countries in salary_data
+
+country_co2 = country_co2[0:191] # removing names which are not countries
+
+salary_lessc = salary_data[salary_data$country_name %in% country_co2, ] # using subsetting to select the country names in the column "country_name" that are present in the list "country_co2"
+
+salary_lessc = salary_lessc %>% arrange(country_name) # rearranging country names in alphabetical order
+
+newc_sal = as.list(salary_lessc[ ,1]) # creating another list with the country names in common of the two data frames, and using it for removing any possible country that is present in "le_co2_plot" and not in 2salary_data".
+
+co2_le_lessc = le_co2_plot[le_co2_plot$Country %in% newc_sal, ] # using subsetting to select the country names in the column "Country" that are present in the list "newc_sal"
+
+co2_le_lessc = co2_le_lessc %>% arrange(Country) # rearranging in alphabetical order (so the rows get numbered correctly)
+
+salary_lessc_clean = salary_lessc[, -1] # removing common columns before merging the data frames
+
+alldata_plot = bind_cols(co2_le_lessc, salary_lessc_clean) #merging the data frames
+
+alldata_plot = alldata_plot %>% relocate(continent_name, .after = region) # relocating the column "continent_name" in a proper position
+
+# now we'll create a new scatter plot that will display any correlation between the average salary per country and the life expectancy, also specifying the hdi code of the country and its continent.
+
+ggplot(
+  data = alldata_plot,
+  mapping = aes(
+    x = average_salary,
+    y = le_2021,
+  )
+) +
+  geom_point(
+    aes(
+      color = continent_name,
+      shape = hdicode
+    ),
+    size = 2
+  ) +
+  geom_smooth(
+    fullrange = TRUE
+  ) +
+  labs(
+    title = "Life expectancy and salaries",
+    subtitle = "Based on HDI and continent",
+    x = "Average Salary",
+    y = "Life Expectancy"
+  )
+
+# since the line created by the function "geom_smooth" can be considered as a straight line that intersects the plane at a 45-degree angle, we can conclude (but still can't be sure, since we can't prove something only from data) that the average salary and life expectancy are strictly linked.
+
+
+```
+
+## Conclusions
+
+### This project, thanks to data frames manipulation, explored the variation of life expectancy and co2 production over time, always distinguishing by the human development index, and has shown various types of salary differences between continents. The last plot is the most summarizing of the project, since we can visualize two data frames plotted together and human development index and continents linked (The year 2021 for life expectancy was chosen because the salary data was updated few days ago, so it is the closest year). The link between life expectancy and average salaries could be better explored in the presence of a data frame containing salary data by year over the world.
+
+
